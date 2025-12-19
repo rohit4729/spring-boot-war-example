@@ -47,7 +47,7 @@ To complete the lifecycle of the application, we need to create separate jobs fo
     * **Goals and options**: `install`
     *(The `install` goal packages the .war file and moves it to the local Maven repository.)*
 
-#### 2.3: Placeholder Jobs
+### 2.3: Placeholder Jobs
 Create the following two **Freestyle Project** items. We will leave the configuration empty for now as they will serve as downstream stages in our pipeline:
 
 1.  **Job 1**: `helloWorld-Deploy-test` (Placeholder for Tomcat deployment).
