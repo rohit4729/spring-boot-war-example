@@ -32,6 +32,8 @@ To ensure Jenkins can compile the Java code, we must link Maven:
     * **Root POM**: `pom.xml`
     * **Goals and options**: `test` 
     *(This ensures the code is validated before we move to the packaging stage.)*
+<img width="1920" height="1080" alt="Screenshot (146)" src="https://github.com/user-attachments/assets/1dbd4a05-bb44-4c55-9cb5-c4732854faea" />
+
 
 ### 2.2 The Build Job (`helloWorld-build`)
 This job is responsible for compiling the code and packaging it into a `.war` file.
@@ -113,11 +115,11 @@ The resulting view will display the sequence of jobs, their current status (Gree
 
 ---
 
-## 🌐 Step 6: Target Server Setup (Ubuntu 24.04 LTS)
+## 🌐 Step 5: Target Server Setup (Ubuntu 24.04 LTS)
 
 Repeat these steps for both the **Test** and **Production** instances to ensure they are ready to host the `.war` files.
 
-### 6.1: Environment & Binary Installation
+### 5.1: Environment & Binary Installation
 First, we install Java 17 and set up the directory structure for Tomcat 9.
 
 ```bash
@@ -139,7 +141,9 @@ sudo chown -R tomcat:tomcat /opt/tomcat9
 sudo chmod +x /opt/tomcat9/bin/*.sh
 
 ```
-### 6.2: Configure Tomcat as a System Service
+<img width="1920" height="1080" alt="Screenshot (149)" src="https://github.com/user-attachments/assets/01561713-d3b7-43e5-8ba9-1ef638a5b58d" />
+
+### 5.2: Configure Tomcat as a System Service
 Create a systemd service file to manage Tomcat with systemctl.
 
 Create the file: sudo nano /etc/systemd/system/tomcat.service   
@@ -169,7 +173,7 @@ ExecStop=/opt/tomcat9/bin/shutdown.sh
 WantedBy=multi-user.target
 ```
 
-### 6.3: Start the server
+### 5.3: Start the server
 
 ```bash
 sudo systemctl daemon-reload
@@ -177,7 +181,7 @@ sudo systemctl start tomcat
 sudo systemctl enable tomcat
 
 ```
-### 6.4: GUI Access & Remote Management
+### 5.4: GUI Access & Remote Management
 By default, Tomcat restricts access to the Manager App. We must unlock it for Jenkins to deploy files.
 
 1. Add Users: Edit /opt/tomcat9/conf/tomcat-users.xml and add:
@@ -191,7 +195,7 @@ By default, Tomcat restricts access to the Manager App. We must unlock it for Je
 /opt/tomcat9/webapps/host-manager/META-INF/context.xml
 
 3. Restart: sudo systemctl restart tomcat
-### 6.5: Verification
+### 5.5: Verification
 Open your browser and navigate to: http://<INSTANCE_IP>:8080
 
 Click Manager App and login with:
@@ -201,3 +205,32 @@ Username: xxxxx
 Password: *****
 
 <img width="1920" height="1080" alt="Screenshot (143)" src="https://github.com/user-attachments/assets/65f1efbf-67b3-44cd-8582-f8c582293677" />
+
+### Step 6: Artifact Management (Archiving & Permissions)
+
+To ensure the deployment jobs can access the generated `.war` file, we must archive it and set the correct permissions.
+
+#### 6.1: Plugin Installation
+Ensure the **Copy Artifact** plugin is installed via **Manage Jenkins > Plugins**. This allows one job to pull files from another job's workspace.
+
+#### 6.2: Configure `helloWorld-build` for Export
+We need to tell Jenkins to "save" the `.war` file and allow other jobs to "pick it up."
+
+**6.2.1 Archive the Artifact**
+1. Open the configuration for **`helloWorld-build`**.
+2. Go to **Post-build Actions** > **Archive the artifacts**.
+3. In **Files to archive**, enter: `**/*.war`
+   *(The `**` ensures Jenkins finds the war file even if it is inside the /target folder.)*
+
+**6.2.2 Set Access Permissions**
+1. Scroll up to the **General** section of the same job.
+2. Check the box for **Permission to Copy Artifact**.
+3. In **Projects allowed to copy artifacts**, enter: `helloWorld-*`
+   *(Using the wildcard `*` allows both your Test and Prod deployment jobs to access this build.)*
+4. **Save** the configuration.
+
+
+
+---
+
+> **Note**: This setup prevents you from having to rebuild the code in every stage, which is a core principle of "Build Once, Deploy Many."
