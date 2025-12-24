@@ -234,3 +234,41 @@ We need to tell Jenkins to "save" the `.war` file and allow other jobs to "pick 
 ---
 
 > **Note**: This setup prevents you from having to rebuild the code in every stage, which is a core principle of "Build Once, Deploy Many."
+
+### Step 7: Finalizing the Test Deployment Job (`helloWorld-Deploy-test`)
+
+This job acts as the delivery vehicle, pulling the stable build from the previous stage and pushing it to the Ubuntu Test server.
+
+#### 7.1: Pulling the Build Artifact
+1. Open the configuration for **`helloWorld-Deploy-test`**.
+2. In the **Build Steps** section, select **Add build step** > **Copy artifacts from another project**.
+3. **Project Name**: `helloWorld-build`.
+4. **Which build**: *Latest successful build*.
+5. **Artifacts to copy**: `**/*.war`.
+
+#### 7.2: Deploying to Tomcat
+We now configure the "Push" to the remote server.
+
+**7.2.1 Re-Archiving (Optional but Recommended)**
+* Add a **Post-build Action**: **Archive the artifacts**.
+* Files to archive: `**/*.war`.
+*(This keeps a record of exactly what was deployed to the test environment in this specific run.)*
+
+**7.2.2 Container Deployment Configuration**
+1. Add a **Post-build Action**: **Deploy war/ear to a container**.
+2. **WAR/EAR files**: `**/*.war`.
+3. **Context path**: `/app` 
+   *(Your app will be accessible at `http://<IP>:8080/app`)*.
+4. **Containers**: Click **Add Container** and select **Tomcat 9.x Remote**.
+5. **Credentials**: Click **Add** and enter the Tomcat manager credentials (`rohit` / `raja28`) created in Step 6.
+6. **Tomcat URL**: `http://<TEST_SERVER_PUBLIC_IP>:8080`.
+
+
+
+---
+
+## 🚀 How to Run the Pipeline
+1. Go to the **HelloWorld-Pipeline** view created in Step 5.
+2. Click the **Run** icon on the `helloWorld-test` job.
+3. Watch as the green progress bar moves from **Test** ➔ **Build** ➔ **Deploy-test**.
+4. Once `Deploy-test` finishes, visit `http://<TEST_IP>:8080/app` to see your application live!
