@@ -214,7 +214,8 @@ To ensure the deployment jobs can access the generated `.war` file, we must arch
 Ensure the **Copy Artifact** plugin is installed via **Manage Jenkins > Plugins**. This allows one job to pull files from another job's workspace.
 
 #### 6.2: Configure `helloWorld-build` for Export
-We need to tell Jenkins to "save" the `.war` file and allow other jobs to "pick it up."
+1. In General section select Permission to copy artifact and in the Projects to allow copy artifacts write helloWorld-Deploy-Prod.
+2. We need to tell Jenkins to "save" the `.war` file and allow other jobs to "pick it up."
 
 **6.2.1 Archive the Artifact**
 1. Open the configuration for **`helloWorld-build`**.
@@ -272,3 +273,89 @@ We now configure the "Push" to the remote server.
 2. Click the **Run** icon on the `helloWorld-test` job.
 3. Watch as the green progress bar moves from **Test** ➔ **Build** ➔ **Deploy-test**.
 4. Once `Deploy-test` finishes, visit `http://<TEST_IP>:8080/app` to see your application live!
+
+### Step 8: Final Production Deployment (`helloWorld-Deploy-Prod`)
+
+To ensure parity between environments, we copy the artifact that has already been successfully deployed to Test, rather than pulling a new build.
+
+#### 8.1: Copy Verified Artifact
+1. Open the configuration for **`helloWorld-Deploy-Prod`**.
+2. In **Build Steps**, select **Copy artifacts from another project**.
+3. **Project Name**: `helloWorld-Deploy-test`.
+4. **Which build**: *Latest successful build*.
+5. **Artifacts to copy**: `**/*.war`.
+
+#### 8.2: Production Container Configuration
+1. Add a **Post-build Action**: **Deploy war/ear to a container**.
+2. **WAR/EAR files**: `**/*.war`.
+3. **Context path**: `/app`.
+4. **Containers**: Select **Tomcat 9.x Remote**.
+5. **Credentials**: Use the same Tomcat manager credentials (`rohit` / `raja28`).
+6. **Tomcat URL**: `http://<PRODUCTION_SERVER_PUBLIC_IP>:8080`.
+
+---
+
+## 🏁 Summary of the Complete Pipeline
+
+Your automation is now fully configured! Here is the flow of data:
+
+| Stage | Action | Artifact Source | Trigger |
+| :--- | :--- | :--- | :--- |
+| **Test** | Maven Test | GitHub Source | SCM Change |
+| **Build** | Maven Install | GitHub Source | Auto (on Test success) |
+| **Deploy-Test** | Push to Tomcat 1 | `helloWorld-build` | Auto (on Build success) |
+| **Deploy-Prod** | Push to Tomcat 2 | `helloWorld-Deploy-test` | **Manual Approval** |
+
+
+
+### 🔗 Verification
+* **Test Environment**: `http://<TEST_IP>:8080/app`
+* **Production Environment**: `http://<PROD_IP>:8080/app`
+
+<img width="1920" height="1080" alt="Screenshot (144)" src="https://github.com/user-attachments/assets/04e42e4b-64f3-4657-9861-9d66f91dd3a2" />
+<img width="1920" height="1080" alt="Screenshot (145)" src="https://github.com/user-attachments/assets/55709323-fa7f-46bf-876e-80741f8dc87b" />
+
+---
+
+
+### Step 9: Automating the Trigger (Poll SCM)
+
+To make the pipeline truly "Continuous," we configure Jenkins to automatically check for new code changes in your repository.
+
+1.  Open the configuration for the **`helloWorld-test`** job.
+2.  Navigate to the **Build Triggers** section.
+3.  Check the box for **Poll SCM**.
+4.  In the **Schedule** text area, enter:
+    ```cron
+    H/2 * * * *
+    ```
+    * **What this does**: Jenkins will poll (check) your GitHub repository every **2 minutes** for any new commits. If it finds a change, it triggers the first job, which then kicks off the entire downstream pipeline.
+
+<img width="1920" height="1080" alt="Screenshot (150)" src="https://github.com/user-attachments/assets/4f381580-9327-4f75-a11f-250d7f4f3de9" />
+
+---
+
+## 🏗 Full Architecture Overview
+
+Now that the setup is complete, here is the automated flow of your DevOps ecosystem:
+
+
+
+1.  **Developer** pushes code to GitHub.
+2.  **Jenkins** (Step 9) detects the change via Polling.
+3.  **Test Job** (Step 2) runs unit tests.
+4.  **Build Job** (Step 2/2) packages the `.war` file and archives it.
+5.  **Deploy-Test** (Step 7) pulls the artifact and deploys it to the Staging server.
+6.  **Human Approval** is required to trigger the final **Deploy-Prod** (Step 8) to the live server.
+
+<img width="3312" height="2017" alt="🏗 Full Architecture Overview - visual selection (1)" src="https://github.com/user-attachments/assets/fef17598-4312-4144-862c-932eb7e0a949" />
+
+---
+
+## 📝 Prerequisites Checklist
+* [ ] Jenkins installed with **Maven**, **Deploy to Container**, and **Copy Artifact** plugins.
+* [ ] Two Ubuntu 24.04 instances with **Tomcat 9** and **Java 17**.
+* [ ] Tomcat `manager-script` credentials configured on both servers.
+* [ ] GitHub Repository URL accessible by Jenkins.
+
+<img width="3027" height="2233" alt="🏗 Full Architecture Overview - visual selection" src="https://github.com/user-attachments/assets/b4b8fe61-c202-4c9a-883c-cf073ad65289" />
